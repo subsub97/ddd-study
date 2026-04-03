@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /Users/ho/.claude/settings*)",
+      "Bash(terminal-notifier -help)",
+      "Bash(timeout 5 terminal-notifier -title 'Claude Code' -message '작업이 완료되었습니다' -sound Pop -sender com.mitchellh.ghostty -activate com.mitchellh.ghostty)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(nohup terminal-notifier:*)",
+      "Bash(terminal-notifier:*)"
+    ]
+  }
+}
