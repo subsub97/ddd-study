@@ -55,7 +55,101 @@ Opus 4.7에게 물어봤다.
     - 한 트랜잭션에서 한 애그리거트만 수정하자
       한 애그리거트가 다른 애그리거트의 기능에 의존하기 시작하면 애그리거트 간 결합도가 높아지는 문제가 발생한다.
       만약 부득이하게 **한 트랜잭션으로 두 개 이상의 애그리거트를 수정해야 한다면 응용 서비스에서 두 애그리거트를 수정하도록 구현하자**
-
+     - 이를 위해 애그리거트 간 직접 참조 대신 id(식별자) 참조를 권장한다. 
 
 > 항상 이벤트로 분리해서 처리하는 것이 좋은 것은 아니다.
 > 비동기 방식을 사용하게 되면 성능상 이점을 가질 수 있지만 실시간성이 떨어지는 단점도 존재한다.
+
+### 애그리거트 간 집합 연관
+> 애그리거트 간 연관은 개념 모델이 아니라 유스케이스와 성능 제약이 결정한다.
+> 그리고 그 방법은 객체 참조가 아니라 ID 참조다."
+
+책에서는 카테고리와 상품의 관계를 예시로 1 - N , N -1 관계의 예시로 설명한다.
+여기서 중요한 것은 개념 모델과 구현 모델을 구분해서 생각해자는 것이다.
+
+개념적으로는 상품이 카테고리 포함되어 있기에, 카테고리 객체가 `List`, `Set` 구조로
+상품 객체를 참조하는 것이 자연스럽다.
+
+만일 이렇게 사용하는 경우 특정 카테고리에 속하는 상품을 찾기 위해서 
+카테고리를 조회하고 카테고리 하위의 모든 상품을 application memory 에 업로드 후 찾는 과정을 거친다.
+
+> 해당 부분이 객체 참조의 위험성 (N + 1, OOM, 성능 저하)
+
+반대로 상품이 카테고리 ID (식별자)를 가지고 있다면 특정 카테고리 ID를 소유한
+상품들만 조회한다면 전체를 가져와 찾지 않고 필요한 상품을 찾아 낼 수 있다.
+
+> 여기서 위 과정을 수행하는 것은 domain이 아닌 service의 역할이고 이게 1장에서 말하는 application 서비스 인걸까?
+
+이렇게 개념 모델을 기준으로 접근하는 것보다 실제 유스케이스를 고려해서 접근하자.
+1 - N 뿐만 아니라 N - M 관계에서도 관계만 생각한다면 양방향을 기본으로 구현해야 할 것 같지만
+실제 사용 사례를 고려하면 단방향인 경우가 많다.
+
+### 검증은 애그리거트(도메인) 책임인가 서비스 책임인가?
+
+Service 레이어를 구현하다 보면 의도치 않게 도메인 객체의 생성 가능 여부 판단을 Service 계층에서 하는 경우가 있다.
+> 자주 고민 했던 부분이였고 해당 책임을 모두 도메인이 가지고 있는게 맞을까? 싶었다.
+> 지금 책을 보면서 정리되는 생각은 생성 유효성 검증 로직을 위해 팩토리를 만들거나,
+> 애그리거트의 책임으로 할당하는 게 맞는 것 같다. 
+> 그 이유는 이전에는 동일한 테이블에서 나오는 것은 모두 같은 애그리거트라고 생각했다.
+> 하지만 이 관점을 버리니 동일한 테이블에서 다양한 애그리거트가 나올 수 있고
+> 그렇다면 애그리거트 마다 생성 책임을 가지는 것이 일관성 있게 관리할 수 있을거 같다.
+
+아래는 동일한 `product` 테이블을 바라보지만 각 컨텍스트, 애그리거트는 다른 경우 예시이다.
+```java
+// 주문 컨텍스트
+package com.shop.order.domain;
+public class Product {
+    private ProductId id;
+    private Money price;
+    private Stock stock;
+    // 주문에 필요한 최소한의 필드만
+}
+
+// 카탈로그 컨텍스트  
+package com.shop.catalog.domain;
+public class Product {
+    private ProductId id;
+    private String name;
+    private String description;
+    private List<Image> images;
+    // 카탈로그에 필요한 필드만
+}
+```
+두 클래스 이름이 같은 Product지만, 완전히 다른 애그리거트이고
+각 애그리거트 , 도메인 정책에 맞는 생성 유효성 검사를 만들면 좋을 것 같다.
+
+```java
+// 외부로 노출하는 것이 아닌 내부에서 검증
+public class Product {
+	private ProductId id;
+	private ProductName name;
+	private Money price;
+	private Stock stock;
+
+	// 생성자를 private으로 막고 정적 팩토리로만 생성
+	private Product(...) { ... }
+
+	public static Product create(ProductName name, Money price, Stock stock) {
+		if (price.isNegative()) throw new InvalidPriceException();
+		if (stock.isNegative()) throw new InvalidStockException();
+		return new Product(ProductId.generate(), name, price, stock);
+	}
+}
+```
+
+
+**애그리거트가 가지고 있는 데이터를 이용해서 다른 애그리거트를 생성해야 한다면
+애그리거트에 팩토리 메서드를 구현하는 것을 고려해보자**
+
+```java
+public class Store {
+	
+	public Product createProduct(ProductId newProductId, ProductInfo pi) {
+		if (isBlocked()) throw new StoreBlockedException();
+		return ProductFactory.create(newProductId, getId(), pi);
+    }
+}
+```
+
+위와 같이 팩토리 형태로 생성하는 경우 생성 책임을 팩토리에서 지기 때문에
+비즈니스 정책이 존재하는 경우 이를 일관성있게 관리할 수 있다.
