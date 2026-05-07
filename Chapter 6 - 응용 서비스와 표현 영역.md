@@ -158,7 +158,8 @@ flowchart TB
 ### 실무에서는 Spring Security를 많이 사용하는데?
 라는 의문을 가지게 되었고 이는 어떻게 분리하면 좋을지 클로드에게 예시 코드를 작성해달라고 했다.
 내용이 길어서 링크를 걸어두겠다.
-[https://github.com/subsub97/ddd-study/blob/main/Spring%20Security%EC%99%80%20%ED%95%A8%EA%BB%98%20%EC%82%AC%EC%9A%A9%ED%95%98%EA%B8%B0.md](https://github.com/subsub97/ddd-study/blob/main/Spring%20Security%EC%99%80%20%ED%95%A8%EA%BB%98%20%EC%82%AC%EC%9A%A9%ED%95%98%EA%B8%B0.md)
+
+[Spring Security와 함께 쓰는 법](https://github.com/subsub97/ddd-study/blob/main/Spring%20Security%EC%99%80%20%ED%95%A8%EA%BB%98%20%EC%82%AC%EC%9A%A9%ED%95%98%EA%B8%B0.md)
 
 
 **다시 생각해보면 좋을 체크리스트**
